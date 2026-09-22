@@ -10,4 +10,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         : base(options)
     {
     }
+
+    public DbSet<VaultRecord> VaultRecords => Set<VaultRecord>();
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        builder.Entity<VaultRecord>()
+            .HasOne(record => record.Owner)
+            .WithMany()
+            .HasForeignKey(record => record.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
 }

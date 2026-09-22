@@ -36,11 +36,21 @@ builder.Services.AddControllers();
 // OpenAPI
 builder.Services.AddOpenApi();
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ITOnly", policy =>
+    {
+        policy.RequireClaim("Department", "IT");
+    });
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    await IdentitySeeder.SeedAsync(scope.ServiceProvider);
+    await IdentitySeeder.SeedAsync(
+    scope.ServiceProvider,
+    app.Configuration);
 }
 
 if (app.Environment.IsDevelopment())
