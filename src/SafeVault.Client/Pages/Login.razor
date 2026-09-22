@@ -1,0 +1,51 @@
+@page "/login"
+
+@using SafeVault.Shared.DTOs.Auth
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<h1>Login</h1>
+
+<EditForm Model="model" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Email</label>
+        <InputText @bind-Value="model.Email" />
+    </div>
+
+    <div>
+        <label>Password</label>
+        <InputText @bind-Value="model.Password" type="password" />
+    </div>
+
+    <button type="submit">Login</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p>@errorMessage</p>
+}
+
+@code {
+    private LoginRequest model = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+
+        var success = await AuthService.LoginAsync(model);
+
+        if (!success)
+        {
+            errorMessage = "Invalid email or password.";
+            return;
+        }
+
+        Navigation.NavigateTo("/profile");
+    }
+}

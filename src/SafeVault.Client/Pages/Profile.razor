@@ -1,0 +1,53 @@
+@page "/profile"
+
+@using SafeVault.Shared.DTOs.Auth
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Profile</PageTitle>
+
+<h1>Profile</h1>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (profile is null)
+{
+    <p>You are not logged in.</p>
+    <button @onclick="GoToLogin">Login</button>
+}
+else
+{
+    <p><strong>Email:</strong> @profile.Email</p>
+    <p><strong>User ID:</strong> @profile.UserId</p>
+
+    <p>
+        <strong>Roles:</strong>
+        @string.Join(", ", profile.Roles)
+    </p>
+
+    <button @onclick="Logout">Logout</button>
+}
+
+@code {
+    private UserProfileResponse? profile;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profile = await AuthService.GetCurrentUserAsync();
+        loading = false;
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

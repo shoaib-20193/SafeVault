@@ -1,0 +1,51 @@
+@page "/register"
+
+@using SafeVault.Shared.DTOs.Auth
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Register</PageTitle>
+
+<h1>Create Account</h1>
+
+<EditForm Model="model" OnValidSubmit="HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Email</label>
+        <InputText @bind-Value="model.Email" />
+    </div>
+
+    <div>
+        <label>Password</label>
+        <InputText @bind-Value="model.Password" type="password" />
+    </div>
+
+    <button type="submit">Create Account</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p>@message</p>
+}
+
+@code {
+    private RegisterRequest model = new();
+    private string? message;
+
+    private async Task HandleRegister()
+    {
+        message = null;
+
+        var success = await AuthService.RegisterAsync(model);
+
+        if (!success)
+        {
+            message = "Unable to create account.";
+            return;
+        }
+
+        Navigation.NavigateTo("/login");
+    }
+}

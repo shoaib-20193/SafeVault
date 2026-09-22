@@ -1,0 +1,100 @@
+@page "/vault"
+
+@using System.Net
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using SafeVault.Shared.DTOs.Vault
+@inject HttpClient Http
+
+<PageTitle>SafeVault</PageTitle>
+
+<h1>My Vault</h1>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p>@errorMessage</p>
+}
+else if (records.Count == 0)
+{
+    <p>No vault records found.</p>
+}
+else
+{
+    @foreach (var record in records)
+    {
+        <article>
+            <h3>@record.Title</h3>
+
+            <p>
+                <strong>Institution:</strong>
+                @record.Institution
+            </p>
+
+            <p>
+                <strong>Account Type:</strong>
+                @record.AccountType
+            </p>
+
+            <p>
+                <strong>Last Four:</strong>
+                @record.LastFourDigits
+            </p>
+
+            <p>
+                <strong>Notes:</strong>
+                @record.Notes
+            </p>
+        </article>
+    }
+}
+
+@code {
+    private List<VaultRecordResponse> records = [];
+    private bool loading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                "/api/Vault");
+
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            using var response = await Http.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "You must be logged in to view your vault.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage =
+                    $"Failed to load vault records ({(int)response.StatusCode}).";
+                return;
+            }
+
+            records =
+                await response.Content
+                    .ReadFromJsonAsync<List<VaultRecordResponse>>()
+                ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Unable to connect to the SafeVault API.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

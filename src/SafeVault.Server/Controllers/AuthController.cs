@@ -124,12 +124,7 @@ public class AuthController : ControllerBase
         {
             userId = user.Id,
             email = user.Email,
-            roles,
-            claims = User.Claims.Select(c => new
-            {
-                type = c.Type,
-                value = c.Value
-            })
+            roles
         });
     }
     [HttpPost("logout")]
