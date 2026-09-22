@@ -176,4 +176,37 @@ public class VaultController : ControllerBase
             UpdatedAt = record.UpdatedAt
         };
     }
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<VaultRecordResponse>>> Search(
+    [FromQuery] string query)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return BadRequest(new
+            {
+                message = "Search query is required."
+            });
+        }
+
+        var records = await _context.VaultRecords
+            .AsNoTracking()
+            .Where(record =>
+                record.OwnerId == user.Id &&
+                (record.Title.Contains(query) ||
+                 record.Institution.Contains(query) ||
+                 record.AccountType.Contains(query) ||
+                 record.Notes.Contains(query)))
+            .OrderByDescending(record => record.UpdatedAt)
+            .Select(record => ToResponse(record))
+            .ToListAsync();
+
+        return Ok(records);
+    }
 }
