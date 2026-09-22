@@ -5,15 +5,15 @@ namespace SafeVault.Shared.DTOs.Vault;
 public class UpdateVaultRecordRequest
 {
     [Required]
-    [StringLength(100)]
+    [StringLength(100, MinimumLength = 1)]
     public string Title { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(100)]
+    [StringLength(100, MinimumLength = 1)]
     public string Institution { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(50)]
+    [StringLength(50, MinimumLength = 1)]
     public string AccountType { get; set; } = string.Empty;
 
     [Required]
