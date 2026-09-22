@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SafeVault.Client/SafeVault.Client.csproj" />
+    <Project Path="src/SafeVault.Server/SafeVault.Server.csproj" />
+    <Project Path="src/SafeVault.Shared/SafeVault.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SafeVault.IntegrationTests/SafeVault.IntegrationTests.csproj" />
+    <Project Path="tests/SafeVault.UnitTests/SafeVault.UnitTests.csproj" />
+  </Folder>
+</Solution>
