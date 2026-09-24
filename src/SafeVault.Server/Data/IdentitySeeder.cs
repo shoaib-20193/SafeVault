@@ -1,4 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SafeVault.Server.Models;
 
 namespace SafeVault.Server.Data;
@@ -9,6 +13,14 @@ public static class IdentitySeeder
         IServiceProvider services,
         IConfiguration configuration)
     {
+        var environment = services.GetRequiredService<IHostEnvironment>();
+
+        // Ensure automatic admin seeding only occurs in Development environment
+        if (!environment.IsDevelopment())
+        {
+            return;
+        }
+
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
@@ -18,13 +30,13 @@ public static class IdentitySeeder
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
-                var result = await roleManager.CreateAsync(new IdentityRole(role));
+                var roleResult = await roleManager.CreateAsync(new IdentityRole(role));
 
-                if (!result.Succeeded)
+                if (!roleResult.Succeeded)
                 {
                     throw new InvalidOperationException(
                         $"Failed to create role '{role}': " +
-                        string.Join(", ", result.Errors.Select(e => e.Description)));
+                        string.Join(", ", roleResult.Errors.Select(e => e.Description)));
                 }
             }
         }
@@ -49,47 +61,41 @@ public static class IdentitySeeder
                 EmailConfirmed = true
             };
 
-            var result = await userManager.CreateAsync(
-                admin,
-                adminPassword);
+            var createResult = await userManager.CreateAsync(admin, adminPassword);
 
-            if (!result.Succeeded)
+            if (!createResult.Succeeded)
             {
                 throw new InvalidOperationException(
                     "Failed to create development admin: " +
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                    string.Join(", ", createResult.Errors.Select(e => e.Description)));
             }
         }
 
         if (!await userManager.IsInRoleAsync(admin, "Admin"))
         {
-            var result = await userManager.AddToRoleAsync(admin, "Admin");
+            var roleAssignResult = await userManager.AddToRoleAsync(admin, "Admin");
 
-            if (!result.Succeeded)
+            if (!roleAssignResult.Succeeded)
             {
                 throw new InvalidOperationException(
                     "Failed to assign Admin role: " +
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                    string.Join(", ", roleAssignResult.Errors.Select(e => e.Description)));
             }
         }
 
         var existingClaims = await userManager.GetClaimsAsync(admin);
 
-        if (!existingClaims.Any(c =>
-            c.Type == "Department" &&
-            c.Value == "IT"))
+        if (!existingClaims.Any(c => c.Type == "Department" && c.Value == "IT"))
         {
             var claimResult = await userManager.AddClaimAsync(
                 admin,
-                new System.Security.Claims.Claim("Department", "IT"));
+                new Claim("Department", "IT"));
 
             if (!claimResult.Succeeded)
             {
                 throw new InvalidOperationException(
                     "Failed to assign Department claim: " +
-                    string.Join(
-                        ", ",
-                        claimResult.Errors.Select(e => e.Description)));
+                    string.Join(", ", claimResult.Errors.Select(e => e.Description)));
             }
         }
     }
