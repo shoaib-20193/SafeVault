@@ -6,6 +6,7 @@ using SafeVault.Server.Data;
 using SafeVault.Server.Models;
 using SafeVault.Shared.DTOs.Vault;
 
+
 namespace SafeVault.Server.Controllers;
 
 [ApiController]
@@ -25,6 +26,7 @@ public class VaultController : ControllerBase
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult<VaultRecordResponse>> Create(
         CreateVaultRecordRequest request)
     {
@@ -103,6 +105,7 @@ public class VaultController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(
         int id,
         UpdateVaultRecordRequest request)
@@ -137,6 +140,7 @@ public class VaultController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
         var user = await _userManager.GetUserAsync(User);

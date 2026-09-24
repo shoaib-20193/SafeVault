@@ -13,7 +13,21 @@
     <link href="SafeVault.Client.styles.css" rel="stylesheet" />
     <script type="importmap"></script>
 </head>
+<script>
+    window.getCookie = function (name) {
+        const cookies = document.cookie.split(";");
 
+        for (const cookie of cookies) {
+            const [key, ...value] = cookie.trim().split("=");
+
+            if (key === name) {
+                return decodeURIComponent(value.join("="));
+            }
+        }
+
+        return null;
+    };
+</script>
 <body>
     <div id="app">
         <svg class="loading-progress">

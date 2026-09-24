@@ -14,5 +14,6 @@ builder.Services.AddScoped(sp =>
     });
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<CsrfService>();
 
 await builder.Build().RunAsync();

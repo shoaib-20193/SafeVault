@@ -11,6 +11,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Antiforgery
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+});
+
 // ASP.NET Core Identity
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>()
@@ -23,7 +29,9 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins("https://localhost:7158")
-            .AllowAnyHeader()
+            .WithHeaders(
+                "Content-Type",
+                "X-CSRF-TOKEN")
             .AllowAnyMethod()
             .AllowCredentials();
     });
@@ -43,7 +51,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/api/auth/forbidden";
 });
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 
 // OpenAPI
 builder.Services.AddOpenApi();
@@ -83,6 +91,7 @@ app.UseCors("BlazorClient");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapControllers();
 

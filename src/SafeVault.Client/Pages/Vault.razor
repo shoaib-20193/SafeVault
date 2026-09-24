@@ -4,7 +4,9 @@
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.WebAssembly.Http
 @using SafeVault.Shared.DTOs.Vault
+
 @inject HttpClient Http
+@inject CsrfService CsrfService
 
 <PageTitle>SafeVault</PageTitle>
 
@@ -14,51 +16,181 @@
 {
     <p>Loading...</p>
 }
-else if (!string.IsNullOrWhiteSpace(errorMessage))
-{
-    <p>@errorMessage</p>
-}
-else if (records.Count == 0)
-{
-    <p>No vault records found.</p>
-}
 else
 {
-    @foreach (var record in records)
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <article>
-            <h3>@record.Title</h3>
-
-            <p>
-                <strong>Institution:</strong>
-                @record.Institution
-            </p>
-
-            <p>
-                <strong>Account Type:</strong>
-                @record.AccountType
-            </p>
-
-            <p>
-                <strong>Last Four:</strong>
-                @record.LastFourDigits
-            </p>
-
-            <p>
-                <strong>Notes:</strong>
-                @record.Notes
-            </p>
-        </article>
+        <p>@errorMessage</p>
     }
+
+    <section>
+        <h2>Add Vault Record</h2>
+
+        <EditForm Model="createModel" OnValidSubmit="CreateRecord">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div>
+                <label>Title</label>
+                <InputText @bind-Value="createModel.Title" />
+            </div>
+
+            <div>
+                <label>Institution</label>
+                <InputText @bind-Value="createModel.Institution" />
+            </div>
+
+            <div>
+                <label>Account Type</label>
+                <InputText @bind-Value="createModel.AccountType" />
+            </div>
+
+            <div>
+                <label>Last Four Digits</label>
+                <InputText @bind-Value="createModel.LastFourDigits" />
+            </div>
+
+            <div>
+                <label>Notes</label>
+                <InputTextArea @bind-Value="createModel.Notes" />
+            </div>
+
+            <button type="submit" disabled="@saving">
+                @(saving ? "Saving..." : "Add Record")
+            </button>
+        </EditForm>
+    </section>
+
+    <hr />
+
+    <section>
+        <h2>My Records</h2>
+
+        @if (records.Count == 0)
+        {
+            <p>No vault records found.</p>
+        }
+        else
+        {
+            @foreach (var record in records)
+            {
+                @if (editingId == record.Id)
+                {
+                    <article>
+                        <h3>Edit Record</h3>
+
+                        <EditForm Model="editModel" OnValidSubmit="UpdateRecord">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div>
+                                <label>Title</label>
+                                <InputText @bind-Value="editModel.Title" />
+                            </div>
+
+                            <div>
+                                <label>Institution</label>
+                                <InputText @bind-Value="editModel.Institution" />
+                            </div>
+
+                            <div>
+                                <label>Account Type</label>
+                                <InputText @bind-Value="editModel.AccountType" />
+                            </div>
+
+                            <div>
+                                <label>Last Four Digits</label>
+                                <InputText @bind-Value="editModel.LastFourDigits" />
+                            </div>
+
+                            <div>
+                                <label>Notes</label>
+                                <InputTextArea @bind-Value="editModel.Notes" />
+                            </div>
+
+                            <button type="submit" disabled="@saving">
+                                @(saving ? "Saving..." : "Save Changes")
+                            </button>
+
+                            <button type="button" @onclick="CancelEdit">
+                                Cancel
+                            </button>
+                        </EditForm>
+                    </article>
+                }
+                else
+                {
+                    <article>
+                        <h3>@record.Title</h3>
+
+                        <p>
+                            <strong>Institution:</strong>
+                            @record.Institution
+                        </p>
+
+                        <p>
+                            <strong>Account Type:</strong>
+                            @record.AccountType
+                        </p>
+
+                        <p>
+                            <strong>Last Four:</strong>
+                            @record.LastFourDigits
+                        </p>
+
+                        <p>
+                            <strong>Notes:</strong>
+                            @record.Notes
+                        </p>
+
+                        <p>
+                            <strong>Created:</strong>
+                            @record.CreatedAt.ToLocalTime()
+                        </p>
+
+                        <p>
+                            <strong>Updated:</strong>
+                            @record.UpdatedAt.ToLocalTime()
+                        </p>
+
+                        <button type="button" @onclick="() => BeginEdit(record)">
+                            Edit
+                        </button>
+
+                        <button type="button" @onclick="() => DeleteRecord(record.Id)" disabled="@saving">
+                            @(saving ? "Deleting..." : "Delete")
+                        </button>
+                    </article>
+                }
+
+                <hr />
+            }
+        }
+    </section>
 }
 
 @code {
     private List<VaultRecordResponse> records = [];
+
+    private CreateVaultRecordRequest createModel = new();
+    private UpdateVaultRecordRequest editModel = new();
+
+    private int? editingId;
+
     private bool loading = true;
+    private bool saving;
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadRecordsAsync();
+    }
+
+    private async Task LoadRecordsAsync()
+    {
+        loading = true;
+        errorMessage = null;
+
         try
         {
             using var request = new HttpRequestMessage(
@@ -97,4 +229,215 @@ else
             loading = false;
         }
     }
+
+    private async Task CreateRecord()
+    {
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var csrfToken = await CsrfService.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(csrfToken))
+            {
+                errorMessage = "Unable to obtain security token.";
+                return;
+            }
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "/api/Vault")
+            {
+                Content = JsonContent.Create(createModel)
+            };
+
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+
+            using var response = await Http.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "You must be logged in to create a record.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage =
+                    $"Failed to create vault record ({(int)response.StatusCode}).";
+                return;
+            }
+
+            createModel = new CreateVaultRecordRequest();
+
+            await LoadRecordsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Unable to connect to the SafeVault API.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void BeginEdit(VaultRecordResponse record)
+    {
+        editingId = record.Id;
+
+        editModel = new UpdateVaultRecordRequest
+        {
+            Title = record.Title,
+            Institution = record.Institution,
+            AccountType = record.AccountType,
+            LastFourDigits = record.LastFourDigits,
+            Notes = record.Notes
+        };
+
+        errorMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editModel = new UpdateVaultRecordRequest();
+        errorMessage = null;
+    }
+
+    private async Task UpdateRecord()
+    {
+        if (editingId is null)
+        {
+            return;
+        }
+
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var csrfToken = await CsrfService.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(csrfToken))
+            {
+                errorMessage = "Unable to obtain security token.";
+                return;
+            }
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Put,
+                $"/api/Vault/{editingId}")
+            {
+                Content = JsonContent.Create(editModel)
+            };
+
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+
+            using var response = await Http.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "You must be logged in to update a record.";
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                errorMessage = "The vault record was not found.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage =
+                    $"Failed to update vault record ({(int)response.StatusCode}).";
+                return;
+            }
+
+            editingId = null;
+            editModel = new UpdateVaultRecordRequest();
+
+            await LoadRecordsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Unable to connect to the SafeVault API.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task DeleteRecord(int id)
+    {
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var csrfToken = await CsrfService.GetTokenAsync();
+
+            if (string.IsNullOrWhiteSpace(csrfToken))
+            {
+                errorMessage = "Unable to obtain security token.";
+                return;
+            }
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"/api/Vault/{id}");
+
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+
+            request.Headers.Add("X-CSRF-TOKEN", csrfToken);
+
+            using var response = await Http.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "You must be logged in to delete a record.";
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                errorMessage = "The vault record was not found.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage =
+                    $"Failed to delete vault record ({(int)response.StatusCode}).";
+                return;
+            }
+
+            if (editingId == id)
+            {
+                editingId = null;
+                editModel = new UpdateVaultRecordRequest();
+            }
+
+            await LoadRecordsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Unable to connect to the SafeVault API.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
 }
+
